@@ -25,6 +25,37 @@ bot = commands.Bot(intents=intents, command_prefix=prefix)
 async def on_ready():
     print(f'logged in as {bot.user}')
 
+
+@bot.event
+async def on_member_join(member):
+    role = nextcord.utils.get(member.guild.roles, name="test")
+    await member.add_roles(role)
+    channel = bot.get_channel(1265600620535091305)
+
+    welcome = nextcord.Embed(title="Welcome", color=0x7cdfcd)
+    welcome.add_field(
+        name=f"{member} has joined {member.guild.name}.",
+        value=
+        f"{member.guild.name} now has {member.guild.member_count} members.",
+        inline=False)
+
+    await channel.send(embed=welcome)
+    print(
+        f'{member} has joined {member.guild.name} and has been given the {role} role. {member.guild.name} now has {member.guild.member_count} members'
+    )
+
+@bot.event
+async def on_member_remove(member):
+    print(f'{member} has left the server')
+
+
+@bot.event    
+async def on_message(message):
+  for x in message.mentions:
+    if(x==bot.user):
+      await message.channel.send(f'Hey! My Prefix is **`!`**')
+  await bot.process_commands(message)
+
 @bot.slash_command(description="first slash cmd", guild_ids=[test_guild_id])
 async def hello(interaction: nextcord.Interaction):
     await interaction.send("Hello!")
@@ -362,6 +393,48 @@ async def txt(ctx, *, idea):
           f.write(a)
       with open(file, 'r+') as f:
           await ctx.send(file=nextcord.File(f))
+
+@bot.command(aliases=['python'])
+async def py(ctx, *, idea):
+      file = r'code1.py'
+      with open(file, 'r+') as f:
+          f.truncate(0)
+          a = idea
+          f.write(a)
+      with open(file, 'r+') as f:
+          await ctx.send(file=nextcord.File(f))
+
+
+@bot.command(aliases=['javascript'])
+async def js(ctx, *, idea):
+      file = r'code.js'
+      with open(file, 'r+') as f:
+          f.truncate(0)
+          a = idea
+          f.write(a)
+      with open(file, 'r+') as f:
+          await ctx.send(file=nextcord.File(f))
+
+
+
+@bot.command(aliases=['av'])
+@commands.guild_only()
+async def avatar(ctx, member: nextcord.Member = None):
+      try:
+          await ctx.send('{}'.format(member.avatar))
+      except:
+          await ctx.send('{}'.format(ctx.message.author.avatar))
+
+
+@bot.command()
+async def say(ctx, *, message=None):
+      message = message or "You have to type a message"
+      message_components = message.split()
+      if "@everyone" in message_components or "@here" in message_components:
+          await ctx.send("You can not ping everyone")
+          return
+      
+      await ctx.send(message+f"\n\n- **{ctx.message.author.name}**")
 
 
 bot.run(token)
