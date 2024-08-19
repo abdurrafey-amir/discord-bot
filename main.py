@@ -7,6 +7,7 @@ import nextcord
 from nextcord.ext import commands
 import random
 import asyncio
+import json
 
 #errors
 # import logging
@@ -66,6 +67,11 @@ async def kick(ctx, member:nextcord.Member=None, *, reason=None):
     # await member.send(f'You have been kicked from `{ctx.guild.name}` for {reason}.')
 
 
+@kick.error
+async def kick_error(ctx, error):
+    if isinstance(error,commands.errors.MissingPermissions):
+      await ctx.send('You do not have the permissions to perform this command!')
+
 @bot.command()
 @commands.has_permissions(ban_members=True)
 async def ban(ctx, member:nextcord.Member=None, *, reason=None):
@@ -88,6 +94,13 @@ async def ban(ctx, member:nextcord.Member=None, *, reason=None):
     # message = f"You have been banned from `{ctx.guild.name}` for {reason}."
     # await member.send(message)
 
+@ban.error
+async def ban_error(ctx, error):
+    if isinstance(error,commands.errors.MissingPermissions):
+      await ctx.send('You do not have the permissions to perform this command!')
+
+
+
 
 @bot.command()
 @commands.has_permissions(ban_members=True)
@@ -104,6 +117,12 @@ async def unban(ctx, *, member):
         # await member.send(f'You have been unbanned from `{ctx.guild.name}`!')
         return
 
+@unban.error
+async def unban_error(ctx, error):
+    if isinstance(error,commands.errors.MissingPermissions):
+      await ctx.send('You do not have the permissions to perform this command!')
+
+
 @bot.command()
 @commands.guild_only()
 @commands.has_permissions(manage_roles=True)
@@ -111,7 +130,7 @@ async def mute(ctx, member: nextcord.Member=None, time2=None, reason=None):
     guild = ctx.guild
     muted_role = nextcord.utils.get(ctx.guild.roles, name="Muted")
     if not muted_role:
-      muted_role = await guild.create_role(name="Muted")
+      muted_role = await guild.create_role(name="Muted", permissions=nextcord.Permissions(send_messages=False, speak=False))
     if member == None or member == ctx.message.author:
          return await ctx.channel.send("You cannot mute yourself :angry:")
          
@@ -137,5 +156,90 @@ async def mute(ctx, member: nextcord.Member=None, time2=None, reason=None):
     await ctx.send(embed=embed2)
     await asyncio.sleep(tempmute)
     await member.remove_roles(muted_role)
+
+@mute.error
+async def mute_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("You don't have the permission to use this command :angry:")
+    else:
+      raise error
+
+
+
+@bot.command()
+@commands.guild_only()
+@commands.has_permissions(kick_members=True)
+async def unmute(ctx, member: nextcord.Member=None):
+    muted_role = nextcord.utils.get(ctx.guild.roles, name="Muted") 
+    if member == None or member == ctx.message.author:
+         await ctx.channel.send("You cannot unmute yourself :angry:")
+         return
+    pos1 = ctx.guild.roles.index(ctx.author.top_role)
+    pos2 = ctx.guild.roles.index(member.top_role)
+    if pos1 == pos2:
+            return await ctx.send("Both of you have the same power so I can not unmute this user for you!")
+    if pos2 > pos1:
+            return await ctx.send("This person has more power than you so I can not unmute him/her for you!")
+    if muted_role not in member.roles:
+      return await ctx.send("This user is not muted!")
+    await member.remove_roles(muted_role)
+    await ctx.send("Unmuted this user!")
+
+   
+@unmute.error
+async def unmute_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("You don't have the permission to use this command :angry:")
+
+
+@bot.command()
+@commands.guild_only()
+@commands.has_permissions(manage_messages=True)
+async def warn(ctx,member:nextcord.Member,*,reason=None):
+    with open('warns.json','r') as f:
+      wj = json.load(f)
+   
+  
+    if f'{ctx.guild.id}' not in wj:
+      wj[f'{ctx.guild.id}'] = {}
+      wj[f'{ctx.guild.id}'][f'{member.id}'] = {}
+      wj[f'{ctx.guild.id}'][f'{member.id}']['warns'] = []
+      wj[f'{ctx.guild.id}'][f'{member.id}']['warns'].append(f'{reason} : Warned by {ctx.author}')
+      with open('warns.json','w') as f:
+       json.dump(wj,f)
+      
+      embed = nextcord.Embed(title='Warned User!')
+      embed.add_field(name='\u200b', value=f'{member.mention} has been warned for {reason}')
+      await ctx.send(embed=embed)
+      return
+
+    if f'{member.id}' in wj[f'{ctx.guild.id}']:
+      wj[f'{ctx.guild.id}'][f'{member.id}']['warns'].append(f'{reason} : Warned by {ctx.author}')
+      embed = nextcord.Embed(title="Warned User!")
+      embed.add_field(name='\u200b', value=f'{member.mention} has been warned for {reason}')
+      await ctx.send(embed=embed)
+
+    
+    if f'{member.id}' not in wj[f'{ctx.guild.id}']:
+      wj[f'{ctx.guild.id}'][f'{member.id}'] = {}
+      wj[f'{ctx.guild.id}'][f'{member.id}']['warns'] = []
+      wj[f'{ctx.guild.id}'][f'{member.id}']['warns'].append(f'{reason} : Warned by {ctx.author}')
+      embed = nextcord.Embed(title='Warned User!')
+      embed.add_field(name='\u200b', value=f'{member.mention} has been warned for {reason}')
+      await ctx.send(embed=embed)
+
+    with open('warns.json','w') as f:
+      json.dump(wj,f)
+
+
+@warn.error
+async def warn_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send('Please pass in all requirements!')
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("You don't have permissions to use this command!")
+
+
+
 
 bot.run(token)
