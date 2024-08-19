@@ -8,6 +8,7 @@ from nextcord.ext import commands
 import random
 import asyncio
 import json
+import requests
 
 #errors
 # import logging
@@ -240,6 +241,127 @@ async def warn_error(ctx, error):
         await ctx.send("You don't have permissions to use this command!")
 
 
+@bot.command()
+@commands.guild_only()
+@commands.has_permissions(manage_messages=True)
+async def warns(ctx, member:nextcord.Member):
+    with open('warns.json','r') as f:
+      wj = json.load(f)
+    
+    if f'{ctx.guild.id}' not in wj:
+      await ctx.send('This member has no warns!')
+      return
+
+    if f'{member.id}' not in wj[f'{ctx.guild.id}']:
+      await ctx.send('This member has no warns!')
+      return
+
+    if f'{member.id}' in wj[f'{ctx.guild.id}']:
+      embed = nextcord.Embed(title=f"{member}'s warns:")
+      counter = 1
+      for warn in  wj[f'{ctx.guild.id}'][f'{member.id}']['warns']:
+        embed.add_field(name=f'{counter}) {warn}',value='ㅤ',inline=False)
+        counter += 1
+      await ctx.send(embed=embed)
+
+
+@warns.error
+async def warns_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send('Please pass in all requirements!')
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("You don't have permissions to use this command!")
+
+
+@bot.command()
+@commands.guild_only()
+@commands.has_permissions(manage_messages=True)
+async def removewarn(self, ctx,member:nextcord.Member,number):
+    with open('warns.json','r') as f:
+      wj = json.load(f)
+
+    if f'{ctx.guild.id}' not in wj:
+      await ctx.send('No warns have been registered for this guild!')
+      return
+    if f'{member.id}' not in wj[f'{ctx.guild.id}']:
+      await ctx.send('User has no warns! Thus making you not able to remove any.')
+      return
+
+    if f'{member.id}' in wj[f'{ctx.guild.id}']:
+      counter = 0
+      for warn in wj[f'{ctx.guild.id}'][f'{member.id}']['warns']:
+        counter += 1
+        try:
+          if counter == int(number):
+            wj[f'{ctx.guild.id}'][f'{member.id}']['warns'].remove(warn)
+            await ctx.send('The warning has been removed!')
+            break
+        except ValueError:
+          await ctx.send('That isnt a valid number!')
+          break
+
+    with open('warns.json','w') as f:
+      json.dump(wj,f)
+
+
+@removewarn.error
+async def removewarn_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send('Please pass in all requirements!')
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("You don't have permissions to use this command!")
+
+
+@bot.command(aliases=['doggo','doggofact', 'dogfact', 'puppy', 'puppyfact'])
+@commands.guild_only()
+async def dog(ctx):
+    response = requests.get('https://some-random-api.ml/endpoints/animal/dog')
+    fact = response.json()
+    dfact = fact['fact']
+    embed = nextcord.Embed(title="Dogs", description=dfact)
+    response = requests.get("https://some-random-api.ml/img/dog")
+    img = response.json()
+    dimg = img['link']
+    embed.set_image(url=dimg)
+    await ctx.send(embed=embed)
+
+
+@bot.command(aliases=['pandafact'])
+@commands.guild_only()
+async def panda(ctx):
+    response = requests.get("https://some-random-api.ml/facts/panda")
+    fact = response.json()
+    pfact = fact['fact']
+    embed = nextcord.Embed(title="Panda", description=pfact)
+    response = requests.get("https://some-random-api.ml/img/panda")
+    img = response.json()
+    pimg = img['link']
+    embed.set_image(url=pimg)
+    await ctx.send(embed=embed)
+
+@bot.command(aliases=['catfact', 'kitten', 'kittenfact'])
+@commands.guild_only()
+async def cat(ctx):
+    response = requests.get("https://some-random-api.ml/facts/cat")
+    fact = response.json()
+    cfact = fact['fact']
+    embed = nextcord.Embed(title="Cats", description=cfact)
+    response = requests.get("https://some-random-api.ml/img/cat")
+    img = response.json()
+    cimg = img['link']
+    embed.set_image(url=cimg)
+    await ctx.send(embed=embed)
+
+
+@bot.command(aliases=['text'])
+async def txt(ctx, *, idea):
+      file = r'message.txt'
+      with open(file, 'r+') as f:
+          f.truncate(0)
+          a = idea
+          f.write(a)
+      with open(file, 'r+') as f:
+          await ctx.send(file=nextcord.File(f))
 
 
 bot.run(token)
